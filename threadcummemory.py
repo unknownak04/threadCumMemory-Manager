@@ -9,12 +9,15 @@ class MemoryManager:
         self.lock = threading.Lock()
 
     def allocate(self, request_size):
-        with self.lock:
-            for i in range(self.size - request_size + 1):
-                if all(block is None for block in self.memory[i:i + request_size]):
-                    for j in range(request_size):
-                        self.memory[i + j] = "Allocated"
-                    return i  # Return starting index
+        # Check availability first without locking
+        for i in range(self.size - request_size + 1):
+            if all(block is None for block in self.memory[i:i + request_size]):
+                with self.lock:  # Lock only during allocation
+                    # Check again to ensure no other thread has allocated in the meantime
+                    if all(block is None for block in self.memory[i:i + request_size]):
+                        for j in range(request_size):
+                            self.memory[i + j] = "Allocated"
+                        return i  # Return starting index
         return -1  # Allocation failed
 
     def deallocate(self, start_index, request_size):
